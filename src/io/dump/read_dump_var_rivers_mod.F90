@@ -70,6 +70,9 @@ CASE ( 'flood_storage_prev' )
 CASE ( 'minor_res_storage' )
   CALL file_read_var(FILE, var_id, rivers%minor_res_storage)
 
+CASE ( 'res_storage' )
+  CALL file_read_var(FILE, var_id, rivers%res_storage)
+
 CASE ( 'rfm_bflowin_rp' )
   CALL file_read_var(FILE, var_id, rivers%rfm_bflowin_rp)
 

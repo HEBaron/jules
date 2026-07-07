@@ -1018,8 +1018,11 @@ SUBROUTINE remap_ancil( nx_rivers, ny_rivers, rivers_dx,                       &
 
 USE jules_rivers_mod, ONLY:                                                    &
   channel_depth_grid, channel_width_grid, mean_sea_level_grid,                 &
-  minor_res_capacity_grid, minor_res_frac_grid, river_distance_grid,           &
-  river_elevation_grid, river_elevation_grid, river_length_grid,               &
+  minor_res_capacity_grid, minor_res_frac_grid,                                &
+  res_capacity_grid, res_catch_grid, res_year_grid,                            &
+  res_critical_grid, res_flood_grid, res_emergency_grid,                       &
+  res_normal_release_grid, res_flood_release_grid,                             &
+  river_distance_grid, river_elevation_grid, river_length_grid,                &
   river_manning_grid, river_nextx_grid, river_nexty_grid, rivers_type
 
 USE overbank_inundation_mod, ONLY:                                             &
@@ -1172,6 +1175,41 @@ CASE ( 'minor_res_frac_grid' )
                     rivers%rivers_xgrid, minor_res_frac_grid )
 
   !----------------------------------------------------------------------------
+  ! Cases for reservoir variables.
+  !----------------------------------------------------------------------------
+CASE ( 'res_capacity_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_capacity_grid )
+
+CASE ( 'res_catch_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_catch_grid )
+
+CASE ( 'res_year_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_year_grid )
+
+CASE ( 'res_critical_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_critical_grid )
+
+CASE ( 'res_flood_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_flood_grid )
+
+CASE ( 'res_emergency_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_emergency_grid )
+
+CASE ( 'res_normal_release_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_normal_release_grid )
+
+CASE ( 'res_flood_release_grid' )
+  CALL remap_field( nx_rivers, ny_rivers, rivers_dx, l_shift_x, l_reverse_y,   &
+                    rivers%rivers_xgrid, res_flood_release_grid )
+
+  !----------------------------------------------------------------------------
   ! Cases for the 1-D coordinate variables.
   ! Rather than requiring separate 1-D remapping routines, we instead create
   ! temporary 2D coordinate variables that can be processed by remap_field.
@@ -1246,7 +1284,7 @@ REAL(KIND=real_jlslsm), INTENT(IN OUT) ::                                      &
 !------------------------------------------------------------------------------
 LOGICAL, OPTIONAL, INTENT(IN) ::                                               &
   is_x_index_arg
-    ! Flag indicating if the field is an index of x location on grid.&
+    ! Flag indicating if the field is an index of x location on grid.          &
 
 !------------------------------------------------------------------------------
 ! Local scalar variables.
@@ -2213,8 +2251,11 @@ USE jules_model_environment_mod, ONLY: l_oasis_rivers
 
 USE jules_rivers_mod, ONLY:                                                    &
   a_thresh, channel_depth_grid, channel_width_grid, i_river_vn,                &
-  l_minor_reservoirs, l_sea_level, l_riv_overbank,                             &
+  l_minor_reservoirs, l_reservoirs, l_sea_level, l_riv_overbank,               &
   mean_sea_level_grid, minor_res_capacity_grid, minor_res_frac_grid,           &
+  res_capacity_grid, res_catch_grid, res_year_grid,                            &
+  res_critical_grid, res_flood_grid, res_emergency_grid,                       &
+  res_normal_release_grid, res_flood_release_grid,                             &
   np_rivers, nseqmax, nx_rivers, ny_rivers, rfm_land, rfm_river,               &
   rivers_camaflood, river_distance_grid,                                       &
   rivers_dx, rivers_dy, river_elevation_grid, river_length_grid,               &
@@ -2460,6 +2501,24 @@ DO ix = 1,nx_rivers
         END IF
 
       END IF  !  l_minor_reservoirs
+
+      !------------------------------------------------------------------------
+      ! Set reservoir ancillary variables, if required.
+      !------------------------------------------------------------------------
+      IF ( l_reservoirs ) THEN
+
+        rivers%res_capacity(ip)       = res_capacity_grid(irx,iry)
+        rivers%res_catch(ip)          = res_catch_grid(irx,iry)
+        rivers%res_year(ip)           = res_year_grid(irx,iry)
+        rivers%res_critical(ip)       = res_critical_grid(irx,iry)
+        rivers%res_flood(ip)          = res_flood_grid(irx,iry)
+        rivers%res_emergency(ip)      = res_emergency_grid(irx,iry)
+        rivers%res_normal_release(ip) =                                        &
+                                        res_normal_release_grid(irx,iry)
+        rivers%res_flood_release(ip)  =                                        &
+                                        res_flood_release_grid(irx,iry)
+
+      END IF  !  l_reservoirs
 
     END IF  !  point_mask
 

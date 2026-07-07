@@ -99,6 +99,7 @@ INTEGER, PARAMETER :: river_rows_dum = 1
 ! water resource variables are not allocated.
 INTEGER, PARAMETER :: tmp_sw_river_source = 0
 LOGICAL, PARAMETER :: tmp_l_minor_reservoirs = .FALSE.
+LOGICAL, PARAMETER :: tmp_l_reservoirs = .FALSE.
 LOGICAL, PARAMETER :: tmp_l_water_resources = .FALSE.
 
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0

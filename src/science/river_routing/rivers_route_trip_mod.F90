@@ -44,11 +44,19 @@ SUBROUTINE rivers_route_trip( sfc_runoff, sub_sfc_runoff, outflow, baseflow,   &
                               rivers_outflow_rp, rivers_next_rp,               &
                               rivers_seq_rp, rivers_sto_rp ,                   &
                               rivers_boxareas_rp,                              &
-                              rivers_lat_rp, rivers_lon_rp )
+                              rivers_lat_rp, rivers_lon_rp,                    &
+                              abstracted_res_rp,                               &
+                              res_cap_current, res_catch,                      &
+                              res_critical, res_flood,                         &
+                              res_emergency,                                   &
+                              res_normal_release,                              &
+                              res_flood_release,                               &
+                              res_storage )
 
 USE jules_rivers_mod, ONLY:                                                    &
 !  imported scalars with intent(in)
-     np_rivers,nstep_rivers,nseqmax,river_mouth,rivers_meander,rivers_speed
+     np_rivers,nstep_rivers,nseqmax,river_mouth,rivers_meander,rivers_speed,   &
+     l_reservoirs
 
 USE rivers_utils, ONLY:                                                        &
 !  imported procedures
@@ -90,6 +98,28 @@ REAL,    INTENT(IN)     :: rivers_boxareas_rp(:)
 REAL,    INTENT(IN)     :: rivers_lat_rp(:)
 REAL,    INTENT(IN)     :: rivers_lon_rp(:)
 REAL,    INTENT(IN OUT) :: rivers_sto_rp(:)
+
+REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
+  abstracted_res_rp(np_rivers),                                                &
+    ! Water abstracted from reservoirs over river timestep (kg).
+  res_cap_current(np_rivers),                                                  &
+    ! Storage capacity of reservoirs (kg).
+  res_catch(np_rivers),                                                        &
+    ! Upstream catchment area of reservoirs (m2).
+  res_critical(np_rivers),                                                     &
+    ! Critical storage threshold of reservoirs (kg).
+  res_flood(np_rivers),                                                        &
+    ! Flood storage threshold of reservoirs (kg).
+  res_emergency(np_rivers),                                                    &
+    ! Emergency storage threshold of reservoirs (kg).
+  res_normal_release(np_rivers),                                               &
+    ! Normal release rate from reservoirs (kg s-1).
+  res_flood_release(np_rivers)
+    ! Flood release rate from reservoirs (kg s-1).
+
+REAL(KIND=real_jlslsm), INTENT(IN OUT) ::                                      &
+  res_storage(np_rivers)
+    ! Water stored in reservoirs (kg).
 
 INTEGER ::                                                                     &
 !  local scalars (work/loop counters)

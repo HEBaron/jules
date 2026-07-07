@@ -28,8 +28,8 @@ CONTAINS
 
 !##############################################################################
 
-SUBROUTINE rivers_route_rp( abstracted_minor_res_rp, net_abstracted_river_rp,  &
-                            rivers )
+SUBROUTINE rivers_route_rp( abstracted_minor_res_rp, abstracted_res_rp,        &
+                            net_abstracted_river_rp, rivers )
 
 !------------------------------------------------------------------------------
 !
@@ -43,8 +43,8 @@ SUBROUTINE rivers_route_rp( abstracted_minor_res_rp, net_abstracted_river_rp,  &
 
 USE jules_rivers_mod, ONLY:                                                    &
 !  imported scalars with intent(in)
-     i_river_vn, l_minor_reservoirs, np_rivers, nstep_rivers,                  &
-     rivers_camaflood, rivers_rfm, rivers_trip, rivers_type
+     i_river_vn, l_reservoirs, l_minor_reservoirs, np_rivers,                  &
+     nstep_rivers, rivers_camaflood, rivers_rfm, rivers_trip, rivers_type
 
 USE jules_water_resources_mod, ONLY:                                           &
      l_water_resources, sw_river_source
@@ -80,6 +80,9 @@ REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
   abstracted_minor_res_rp(np_rivers),                                          &
     ! Water abstracted from minor reservoirs over river timestep, on river
     ! points (kg).
+  abstracted_res_rp(np_rivers),                                                &
+    ! Water abstracted from reservoirs over river timestep, on river
+    ! points (kg).
   net_abstracted_river_rp(np_rivers)
     ! Water abstracted from rivers over river timestep, on river points
     ! (kg m-2).
@@ -92,7 +95,7 @@ TYPE(rivers_type), INTENT(IN OUT) :: rivers
 !------------------------------------------------------------------------------
 ! Local scalar variables
 !------------------------------------------------------------------------------
-INTEGER :: ip                !  loop counter
+INTEGER :: ip                        !  loop counter
 
 REAL(KIND=real_jlslsm) :: recip_timestep
   ! Reciprocal of river timestep length (s-1).
@@ -141,6 +144,7 @@ DO ip = 1, np_rivers
   rivers%rrun_rp(ip) = rivers%rrun_surf_rp(ip) + rivers%rrun_sub_surf_rp(ip)
 END DO
 
+
 !------------------------------------------------------------------------------
 ! Call the routing science routine.
 !------------------------------------------------------------------------------
@@ -158,14 +162,23 @@ CASE ( rivers_camaflood )
 CASE ( rivers_rfm )
   CALL rivers_route_rfm( rivers%rrun_surf_rp, rivers%rrun_sub_surf_rp,         &
                          rivers%rflow_rp, baseflow,                            &
+                         abstracted_res_rp,                                    &
                         !  imported river arrays
                          rivers)
 CASE ( rivers_trip )
   CALL rivers_route_trip( rivers%rrun_surf_rp, rivers%rrun_sub_surf_rp,        &
                           rivers%rflow_rp, baseflow, rivers%rivers_outflow_rp, &
                           rivers%rivers_next_rp, rivers%rivers_seq_rp,         &
-                          rivers%rivers_sto_rp,rivers%rivers_boxareas_rp,      &
-                          rivers%rivers_lat_rp, rivers%rivers_lon_rp  )
+                          rivers%rivers_sto_rp, rivers%rivers_boxareas_rp,     &
+                          rivers%rivers_lat_rp, rivers%rivers_lon_rp,          &
+                          abstracted_res_rp,                                   &
+                          rivers%res_cap_current,                              &
+                          rivers%res_catch,                                    &
+                          rivers%res_critical, rivers%res_flood,               &
+                          rivers%res_emergency,                                &
+                          rivers%res_normal_release,                           &
+                          rivers%res_flood_release,                            &
+                          rivers%res_storage )
 CASE DEFAULT
   WRITE(jules_message,*) 'ERROR: rivers_drive: ' //                            &
                          'do not recognise i_river_vn=', i_river_vn

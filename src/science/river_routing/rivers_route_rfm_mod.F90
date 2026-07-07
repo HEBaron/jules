@@ -65,13 +65,13 @@ CONTAINS
 !   again to a flux density kg/m2/s
 
 SUBROUTINE rivers_route_rfm( sfc_runoff, sub_sfc_runoff, outflow, baseflow,    &
-                             rivers )
+                             abstracted_res_rp, rivers )
 
 USE jules_rivers_mod, ONLY:                                                    &
 !  imported scalars
        nstep_rivers, np_rivers, river_mouth                                    &
        ,rivers_first, rivers_length, runoff_factor, cland, criver, cbland      &
-       ,cbriver, retl, retr, rfm_land, rfm_river, rfm_sea,                     &
+       ,cbriver, retl, retr, rfm_land, rfm_river, rfm_sea,  l_reservoirs,      &
 ! imported type
         rivers_type
 
@@ -94,6 +94,8 @@ IMPLICIT NONE
 ! IN Arguments
 
 ! Array arguments with intent(in)
+REAL(KIND=real_jlslsm), INTENT(IN) :: abstracted_res_rp(np_rivers)
+       !  Water abstracted from reservoirs over river timestep (kg).
 REAL(KIND=real_jlslsm), INTENT(IN) :: sfc_runoff(np_rivers)
        !  average rate of surface runoff since last rivers call (kg m-2 s-1)
        !  This includes any abstraction of water for water resources.

@@ -76,6 +76,8 @@ TYPE :: water_resources_data_type
     !--------------------------------------------------------------------------
     abstracted_minor_res(:),                                                   &
     ! Water abstracted from minor reservoirs (kg).
+    abstracted_res(:),                                                         &
+    ! Water abstracted from reservoirs (kg).
     net_abstracted_river(:),                                                   &
       ! Net abstraction from river (kg m-2).
     !--------------------------------------------------------------------------
@@ -120,6 +122,7 @@ TYPE :: water_resources_type
   REAL(KIND=real_jlslsm), POINTER :: demand_rate_livestock(:)
   REAL(KIND=real_jlslsm), POINTER :: demand_rate_transfers(:)
   REAL(KIND=real_jlslsm), POINTER :: abstracted_minor_res(:)
+  REAL(KIND=real_jlslsm), POINTER :: abstracted_res(:)
   REAL(KIND=real_jlslsm), POINTER :: net_abstracted_river(:)
   REAL(KIND=real_jlslsm), POINTER :: demand_accum(:,:)
   REAL(KIND=real_jlslsm), POINTER :: demand_unmet(:,:)
@@ -142,9 +145,9 @@ CONTAINS
 
 SUBROUTINE water_resources_alloc( land_pts, n_sw_source, nwater_use,           &
              sw_river_source, l_have_groundwater, l_have_surface_water,        &
-             l_minor_reservoirs, l_water_domestic, l_water_industry,           &
-             l_water_irrigation, l_water_livestock, l_water_resources,         &
-             l_water_transfers, water_resources_data )
+             l_minor_reservoirs, l_reservoirs, l_water_domestic,               &
+             l_water_industry, l_water_irrigation, l_water_livestock,          &
+             l_water_resources, l_water_transfers, water_resources_data )
 
 !No USE statements other than Dr Hook
 USE parkind1,    ONLY: jprb, jpim
@@ -173,6 +176,8 @@ LOGICAL, INTENT(IN) ::                                                         &
     ! Flag indicating if we have surface water represented (e.g. rivers).
   l_minor_reservoirs,                                                          &
     ! Switch for minor_reservoirs.
+  l_reservoirs,                                                                &
+    ! Switch for reservoirs.
   l_water_domestic,                                                            &
     ! Switch to consider demand for water for domestic use.
   l_water_industry,                                                            &
@@ -195,8 +200,8 @@ TYPE(water_resources_data_type), INTENT(IN OUT) :: water_resources_data
 ! Local variables
 !------------------------------------------------------------------------------
 INTEGER ::                                                                     &
-  land_pts_dim, land_pts_gw, land_pts_minor_res, land_pts_sw,                  &
-  land_pts_sw_rivers, n_sw_source_dim, nwater_use_dim
+  land_pts_dim, land_pts_gw, land_pts_minor_res, land_pts_res,                 &
+  land_pts_sw, land_pts_sw_rivers, n_sw_source_dim, nwater_use_dim
     ! Sizes used when allocating arrays.
 
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
@@ -219,6 +224,7 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 land_pts_dim       = 1
 land_pts_gw        = 1
 land_pts_minor_res = 1
+land_pts_res = 1
 land_pts_sw        = 1
 land_pts_sw_rivers = 1
 n_sw_source_dim    = 1
@@ -238,6 +244,9 @@ IF ( l_water_resources ) THEN
   END IF
   IF ( l_minor_reservoirs ) THEN
     land_pts_minor_res  = land_pts
+  END IF
+  IF ( l_reservoirs ) THEN
+    land_pts_res  = land_pts
   END IF
 END IF
 
@@ -286,9 +295,13 @@ END IF
 ! Coupling to minor reservoirs.
 ! Only allocated at full size if minor reservoirs are modelled.
 !-----------------------------------------------------------------------------
-print*,'alloc l_minor_reservoirs=',l_minor_reservoirs
 ALLOCATE( water_resources_data%abstracted_minor_res(land_pts_minor_res) )
-print*,'Alloc size=',size( water_resources_data%abstracted_minor_res )
+
+!-----------------------------------------------------------------------------
+! Coupling to reservoirs.
+! Only allocated at full size if reservoirs are modelled.
+!-----------------------------------------------------------------------------
+ALLOCATE( water_resources_data%abstracted_res(land_pts_res) )
 
 !-----------------------------------------------------------------------------
 ! Coupling to rivers.
@@ -321,6 +334,7 @@ water_resources_data%demand_rate_industry(:)  = 0.0
 water_resources_data%demand_rate_livestock(:) = 0.0
 water_resources_data%demand_rate_transfers(:) = 0.0
 water_resources_data%abstracted_minor_res(:)  = 0.0
+water_resources_data%abstracted_res(:)  = 0.0
 water_resources_data%net_abstracted_river(:)  = 0.0
 water_resources_data%demand_accum(:,:)        = 0.0
 water_resources_data%demand_unmet(:,:)        = 0.0
@@ -374,6 +388,7 @@ DEALLOCATE( water_resources_data%demand_rate_industry )
 DEALLOCATE( water_resources_data%demand_rate_livestock )
 DEALLOCATE( water_resources_data%demand_rate_transfers )
 DEALLOCATE( water_resources_data%abstracted_minor_res )
+DEALLOCATE( water_resources_data%abstracted_res )
 DEALLOCATE( water_resources_data%net_abstracted_river )
 DEALLOCATE( water_resources_data%demand_accum )
 DEALLOCATE( water_resources_data%demand_unmet )
@@ -441,6 +456,8 @@ water_resources%demand_rate_transfers                                          &
                 => water_resources_data%demand_rate_transfers
 water_resources%abstracted_minor_res                                           &
                 => water_resources_data%abstracted_minor_res
+water_resources%abstracted_res                                                 &
+                => water_resources_data%abstracted_res
 water_resources%net_abstracted_river                                           &
                 => water_resources_data%net_abstracted_river
 water_resources%demand_accum     => water_resources_data%demand_accum
@@ -491,6 +508,7 @@ NULLIFY( water_resources%demand_rate_industry )
 NULLIFY( water_resources%demand_rate_livestock )
 NULLIFY( water_resources%demand_rate_transfers )
 NULLIFY( water_resources%abstracted_minor_res )
+NULLIFY( water_resources%abstracted_res )
 NULLIFY( water_resources%net_abstracted_river )
 NULLIFY( water_resources%demand_accum )
 NULLIFY( water_resources%demand_unmet )

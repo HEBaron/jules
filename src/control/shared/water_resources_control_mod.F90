@@ -72,6 +72,8 @@ REAL(KIND=real_jlslsm), ALLOCATABLE ::                                         &
     ! Water abstracted from non-renewable groundwater (kg).
   minor_res_storage_global(:),                                                 &
     ! Water stored in minor reservoirs, on land points (kg).
+  res_storage_global(:),                                                       &
+    ! Water stored in reservoirs, on land points (kg).
   return_flow_gw_global(:),                                                    &
     ! Water that is returned to renewable groundwater after use (kg).
   return_flow_sw_global(:),                                                    &
@@ -105,7 +107,7 @@ SUBROUTINE water_resources_control(                                            &
              flandg, frac_irr_soilt, frac_soilt,                               &
              frac_surft, grid_area_ij,                                         &
              ls_rain_ij, ls_snow_ij, lw_down, minor_res_storage,               &
-             rfm_surfstore_rp, rivers_sto_rp, smvccl_soilt,                    &
+             res_storage, rfm_surfstore_rp, rivers_sto_rp, smvccl_soilt,       &
              smvcst_soilt, smvcwt_soilt, sthf_soilt,                           &
              sw_surft, tl_1_ij, tstar_surft,                                   &
              icntmax_gb, plant_n_gb, demand_accum,                             &
@@ -115,8 +117,9 @@ SUBROUTINE water_resources_control(                                            &
              sthzw_soilt, sub_surf_roff, tl_1_day_av_gb,                       &
              tl_1_day_av_use_gb,  priority_order, demand_unmet, gw_abstracted, &
              gw_avail_start, gw_nr_abstracted,                                 &
-             irrig_water_gb, abstracted_minor_res, net_abstracted_river,       &
-             sw_abstracted, sw_avail_total, water_removed )
+             irrig_water_gb, abstracted_minor_res, abstracted_res,             &
+             net_abstracted_river, sw_abstracted, sw_avail_total,              &
+             water_removed )
 
 !------------------------------------------------------------------------------
 ! Description:
@@ -141,7 +144,8 @@ USE irrigation_water_mod, ONLY: calc_irrigation_demand
 
 USE jules_irrig_mod, ONLY: irr_crop_doell, irr_crop
 
-USE jules_rivers_mod, ONLY: l_minor_reservoirs, l_rivers, np_rivers
+USE jules_rivers_mod, ONLY:                                                    &
+   l_minor_reservoirs, l_reservoirs, l_rivers, np_rivers
 
 USE jules_soil_mod, ONLY: sm_levels
 
@@ -218,6 +222,8 @@ REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
     ! Surface downward longwave radiation (W m-2).
   minor_res_storage(np_rivers),                                                &
     ! Water stored in minor reservoirs (kg).
+  res_storage(np_rivers),                                                      &
+    ! Water stored in reservoirs (kg).
   rfm_surfstore_rp(np_rivers),                                                 &
     ! River surface storage (m3).
   rivers_sto_rp(np_rivers),                                                    &
@@ -304,6 +310,8 @@ REAL(KIND=real_jlslsm), INTENT(OUT) ::                                         &
     ! Water abstracted from minor reservoirs (kg).
     ! Note that this has reduced size if it is not required.
     !cxyz Perhaps don't specify size?
+  abstracted_res(land_pts),                                                    &
+    ! Water abstracted from reservoirs (kg).
   net_abstracted_river(land_pts),                                              &
     ! Net abstraction from river (kg m-2).
   sw_abstracted(land_pts,n_sw_source),                                         &
@@ -401,6 +409,9 @@ END IF
 ! Initialise coupling fluxes.
 IF ( l_minor_reservoirs ) THEN
   abstracted_minor_res(:) = 0.0
+END IF
+IF ( l_reservoirs ) THEN
+  abstracted_res(:) = 0.0
 END IF
 IF ( sw_river_source > 0 ) THEN
   net_abstracted_river(:) = 0.0
@@ -501,10 +512,12 @@ IF ( l_water_res_call ) THEN
       !------------------------------------------------------------------------
       CALL regrid_to_land( global_land_index, map_river_to_land_points,        &
                            rivers_index_rp, minor_res_storage,                 &
-                           rfm_surfstore_rp, rivers_sto_rp,                    &
-                           minor_res_storage_global, river_storage_global )
+                           res_storage, rfm_surfstore_rp, rivers_sto_rp,       &
+                           minor_res_storage_global, res_storage_global,       &
+                           river_storage_global )
 
       CALL calc_avail_surface_water( minor_res_storage_global,                 &
+                                     res_storage_global,                       &
                                      river_storage_global,                     &
                                      sw_avail_global )
 
@@ -532,7 +545,7 @@ IF ( l_water_res_call ) THEN
   ! There are no prognostic variables to be scattered.
   !----------------------------------------------------------------------------
   CALL scatter_global_water( conveyance_loss, demand_unmet, gw_abstracted,     &
-                             abstracted_minor_res,                             &
+                             abstracted_minor_res, abstracted_res,             &
                              gw_nr_abstracted, return_flow_gw, return_flow_sw, &
                              sfc_water_frac, supply_irrig, sw_abstracted,      &
                              sw_avail_total, water_removed )
@@ -838,7 +851,7 @@ USE ancil_info, ONLY: land_pts  ! for the current task
 
 USE ereport_mod, ONLY: ereport
 
-USE jules_rivers_mod, ONLY: l_minor_reservoirs, l_rivers
+USE jules_rivers_mod, ONLY: l_minor_reservoirs, l_reservoirs, l_rivers
 
 USE jules_water_resources_mod, ONLY: l_have_groundwater, l_have_surface_water, &
   l_prioritise, l_water_irrigation, n_sw_source, nwater_use
@@ -880,6 +893,8 @@ INTEGER ::                                                                     &
     ! Size for groundwater arrays.
   land_size_minor_res,                                                         &
     ! Size for minor reservoir arrays.
+  land_size_res,                                                               &
+    ! Size for reservoir arrays.
   land_size_rivers,                                                            &
     ! Size for river arrays.
   land_size_sw
@@ -917,6 +932,11 @@ IF ( l_allocate ) THEN
     ELSE
       land_size_minor_res = 1
     END IF
+    IF ( l_reservoirs ) THEN
+      land_size_res = global_land_pts
+    ELSE
+      land_size_res = 1
+    END IF
     IF ( l_water_irrigation ) THEN
       land_size_irrig = global_land_pts
     ELSE
@@ -928,6 +948,7 @@ IF ( l_allocate ) THEN
     land_size_irrig = 1
     land_size_gw    = 1
     land_size_minor_res = 1
+    land_size_res = 1
     land_size_rivers = 1
     land_size_sw    = 1
   END IF
@@ -948,6 +969,8 @@ IF ( l_allocate ) THEN
   ALLOCATE(gw_nr_abstracted_global(land_size_gw), STAT = ERROR)
   error_sum = error_sum + ERROR
   ALLOCATE(minor_res_storage_global(land_size_minor_res), STAT = ERROR)
+  error_sum = error_sum + ERROR
+  ALLOCATE(res_storage_global(land_size_res), STAT = ERROR)
   error_sum = error_sum + ERROR
 
   IF ( l_prioritise ) THEN
@@ -995,6 +1018,7 @@ IF ( l_allocate ) THEN
     gw_avail_global(:)         = 0.0
     gw_nr_abstracted_global(:) = 0.0
     minor_res_storage_global(:) = 0.0
+    res_storage_global(:) = 0.0
     priority_order_global(:,:) = 0
     return_flow_gw_global(:)   = 0.0
     return_flow_sw_global(:)   = 0.0
@@ -1031,6 +1055,9 @@ ELSE
   IF ( ALLOCATED(priority_order_global) ) DEALLOCATE(priority_order_global)
   IF ( ALLOCATED(minor_res_storage_global) ) THEN
     DEALLOCATE(minor_res_storage_global)
+  END IF
+  IF ( ALLOCATED(res_storage_global) ) THEN
+    DEALLOCATE(res_storage_global)
   END IF
   IF ( ALLOCATED(gw_nr_abstracted_global)) DEALLOCATE(gw_nr_abstracted_global)
   IF ( ALLOCATED(gw_avail_global) )       DEALLOCATE(gw_avail_global)
@@ -1131,7 +1158,7 @@ END SUBROUTINE gather_global_water
 !##############################################################################
 
 SUBROUTINE scatter_global_water( conveyance_loss, demand_unmet, gw_abstracted, &
-                                 abstracted_minor_res,                         &
+                                 abstracted_minor_res, abstracted_res,         &
                                  gw_nr_abstracted, return_flow_gw,             &
                                  return_flow_sw, sfc_water_frac, supply_irrig, &
                                  sw_abstracted, sw_avail_total, water_removed )
@@ -1143,11 +1170,11 @@ SUBROUTINE scatter_global_water( conveyance_loss, demand_unmet, gw_abstracted, &
 
 USE ancil_info, ONLY: land_pts  ! for the current task
 
-USE jules_rivers_mod, ONLY: l_minor_reservoirs 
+USE jules_rivers_mod, ONLY: l_minor_reservoirs, l_reservoirs
 
 USE jules_water_resources_mod, ONLY: l_have_groundwater, l_have_surface_water, &
-      l_water_irrigation, n_sw_source, nwater_use,                             &
-      partition_calc_from_stores, partition_method, sw_minor_res_source
+      l_water_irrigation, n_sw_source, nwater_use, partition_calc_from_stores, &
+      partition_method, sw_minor_res_source, sw_res_source
 
 USE model_grid_mod, ONLY: global_land_pts
 
@@ -1169,6 +1196,8 @@ REAL(KIND=real_jlslsm), INTENT(OUT) ::                                         &
     ! Water abstracted from non-renewable groundwater (kg).
   abstracted_minor_res(land_pts),                                              &
     ! Water abstracted from minor reservoirs (kg).
+  abstracted_res(land_pts),                                                    &
+    ! Water abstracted from reservoirs (kg).
   return_flow_gw(land_pts),                                                    &
     ! Water that is returned to renewable groundwater after use (kg).
   return_flow_sw(land_pts),                                                    &
@@ -1229,8 +1258,12 @@ IF ( l_have_surface_water ) THEN
   !     regather in rivers code (as for net abs from river?) - but this does
   !     allows this to better follow existing code.
   IF ( l_minor_reservoirs ) THEN
-    CALL scatter_land_field( sw_abstracted_global(:,sw_minor_res_source),     &
+    CALL scatter_land_field( sw_abstracted_global(:,sw_minor_res_source),      &
                              abstracted_minor_res )
+  END IF
+  IF ( l_reservoirs ) THEN
+    CALL scatter_land_field( sw_abstracted_global(:,sw_res_source),            &
+                             abstracted_res )
   END IF
 END IF
 
@@ -1247,8 +1280,9 @@ END SUBROUTINE scatter_global_water
 
 SUBROUTINE regrid_to_land( global_land_index, map_river_to_land_points,        &
                            rivers_index_rp, minor_res_storage,                 &
-                           rfm_surfstore_rp, rivers_sto_rp,                    &
-                           minor_res_storage_global, river_storage_global )
+                           res_storage, rfm_surfstore_rp, rivers_sto_rp,       &
+                           minor_res_storage_global, res_storage_global,       &
+                           river_storage_global )
 
 !------------------------------------------------------------------------------
 ! Description:
@@ -1257,7 +1291,8 @@ SUBROUTINE regrid_to_land( global_land_index, map_river_to_land_points,        &
 
 USE ereport_mod, ONLY: ereport
 
-USE jules_rivers_mod, ONLY: i_river_vn, l_minor_reservoirs, l_rivers,         &
+USE jules_rivers_mod, ONLY: i_river_vn, l_minor_reservoirs,                    &
+                            l_reservoirs, l_rivers,                            &
                             np_rivers, rivers_rfm, rivers_trip
 
 USE model_grid_mod, ONLY: global_land_pts
@@ -1283,6 +1318,8 @@ INTEGER, INTENT(IN) ::                                                         &
 REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
   minor_res_storage(np_rivers),                                                &
     ! Water stored in minor reservoirs (kg).
+  res_storage(np_rivers),                                                      &
+    ! Water stored in reservoirs (kg).
   rfm_surfstore_rp(np_rivers),                                                 &
     ! River surface storage (m3).
   rivers_sto_rp(np_rivers)
@@ -1294,6 +1331,8 @@ REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
 REAL(KIND=real_jlslsm), INTENT(OUT) ::                                         &
   minor_res_storage_global(global_land_pts),                                   &
     ! Water stored in minor reservoirs, on land points (kg).
+  res_storage_global(global_land_pts),                                         &
+    ! Water stored in reservoirs, on land points (kg).
   river_storage_global(global_land_pts)
     ! Water in rivers, on land points (kg).
 
@@ -1366,6 +1405,18 @@ IF ( l_minor_reservoirs ) THEN
                           map_river_to_land_points, global_land_index,         &
                           rivers_index_rp, minor_res_storage,                  &
                           minor_res_storage_global )
+END IF
+
+!------------------------------------------------------------------------------
+! Get reservoir storage onto land points.
+!------------------------------------------------------------------------------
+IF ( l_reservoirs ) THEN
+  ! Initialise.
+  res_storage_global(:) = 0.0
+  CALL rivpts_to_landpts( global_land_pts, np_rivers,                          &
+                          map_river_to_land_points, global_land_index,         &
+                          rivers_index_rp, res_storage,                        &
+                          res_storage_global )
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
