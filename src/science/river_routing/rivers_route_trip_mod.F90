@@ -62,6 +62,10 @@ USE rivers_utils, ONLY:                                                        &
 !  imported procedures
      get_rivers_len_rp
 
+USE route_reservoirs_mod, ONLY:                                                &
+! imported procedures
+     route_reservoirs
+
 USE timestep_mod, ONLY:                                                        &
    timestep
 
@@ -177,6 +181,21 @@ DO iseq = 1, nseqmax
     !   Get index (location in rivers vector) of the point to consider.
     IF ( rivers_seq_rp(ip) == iseq ) THEN
 
+      !-------------------------------------------------------------------------------
+      !   If reservoirs are considered and capacity > 0, route through them.
+      !-------------------------------------------------------------------------------
+      IF (l_reservoirs .AND. res_cap_current(ip) > 0.0) THEN
+        CALL route_reservoirs(dt, abstracted_res_rp(ip),                       &
+                                    res_cap_current(ip),                       &
+                                    res_catch(ip),                             &
+                                    res_critical(ip),                          &
+                                    res_flood(ip),                             &
+                                    res_emergency(ip),                         &
+                                    res_normal_release(ip),                    &
+                                    res_flood_release(ip),                     &
+                                    res_storage(ip), inflow(ip))
+      ENDIF
+
       !-----------------------------------------------------------------------
       !   Calculate the coefficient "c" of the model.
       !   c=u/(d*r), where u is effective flow speed,
@@ -201,6 +220,8 @@ DO iseq = 1, nseqmax
       !   Calculate outflow as inflow minus change in storage.
       !-----------------------------------------------------------------------
       outflow(ip) = inflow(ip) + (store_old - rivers_sto_rp(ip)) / dt
+
+
 
       !-----------------------------------------------------------------------
       !   Add outflow to inflow of next downstream point.

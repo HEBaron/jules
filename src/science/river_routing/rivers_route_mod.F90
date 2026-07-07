@@ -46,6 +46,8 @@ USE jules_rivers_mod, ONLY:                                                    &
      i_river_vn, l_reservoirs, l_minor_reservoirs, np_rivers,                  &
      nstep_rivers, rivers_camaflood, rivers_rfm, rivers_trip, rivers_type
 
+USE time_info_mod, ONLY: current_model_time
+
 USE jules_water_resources_mod, ONLY:                                           &
      l_water_resources, sw_river_source
 
@@ -96,6 +98,9 @@ TYPE(rivers_type), INTENT(IN OUT) :: rivers
 ! Local scalar variables
 !------------------------------------------------------------------------------
 INTEGER :: ip                        !  loop counter
+INTEGER :: year                      !  current model year
+INTEGER, SAVE :: year_change = -1
+!  year of last reservoir capacity update
 
 REAL(KIND=real_jlslsm) :: recip_timestep
   ! Reciprocal of river timestep length (s-1).
@@ -144,6 +149,18 @@ DO ip = 1, np_rivers
   rivers%rrun_rp(ip) = rivers%rrun_surf_rp(ip) + rivers%rrun_sub_surf_rp(ip)
 END DO
 
+!------------------------------------------------------------------------------
+! Update reservoir capacities at the start and on each year change.
+!------------------------------------------------------------------------------
+IF ( l_reservoirs ) THEN
+  CALL current_model_time(year=year)
+  IF ( year /= year_change ) THEN
+    CALL update_reservoirs( rivers%res_capacity,                               &
+                                  rivers%res_year,                             &
+                                  rivers%res_cap_current )
+    year_change = year
+  END IF
+END IF
 
 !------------------------------------------------------------------------------
 ! Call the routing science routine.
@@ -391,6 +408,53 @@ END IF
 DEALLOCATE(global_rivers_adj_on_landpts)
 
 END SUBROUTINE adjust_routestore
+
+!##############################################################################
+
+SUBROUTINE update_reservoirs( res_capacity, res_year,                          &
+            res_cap_current )
+
+USE jules_rivers_mod, ONLY:                                                    &
+! imported scalars
+  np_rivers
+
+USE time_info_mod, ONLY: current_model_time
+
+IMPLICIT NONE
+
+!------------------------------------------------------------------------------
+! Array arguments with intent(in).
+!------------------------------------------------------------------------------
+REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
+  res_capacity(np_rivers),                                                     &
+    ! Capacity of reservoirs (kg).
+  res_year(np_rivers)
+    ! Build year of reservoirs.
+
+!------------------------------------------------------------------------------
+! Array arguments with intent(inout).
+!------------------------------------------------------------------------------
+REAL(KIND=real_jlslsm), INTENT(INOUT) ::                                       &
+  res_cap_current(np_rivers)
+    ! Capacity of currently active reservoirs (kg).
+
+!------------------------------------------------------------------------------
+! Local scalar variables.
+!------------------------------------------------------------------------------
+INTEGER :: i    ! Loop counter.
+INTEGER :: year ! Current model year.
+
+!end of header
+!------------------------------------------------------------------------------
+CALL current_model_time(year)
+
+DO i = 1, np_rivers
+  IF ( res_year(i) <= year ) THEN
+    res_cap_current(i) = res_capacity(i)
+  END IF
+END DO
+
+END SUBROUTINE update_reservoirs
 
 !##############################################################################
 

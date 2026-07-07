@@ -77,6 +77,10 @@ USE jules_rivers_mod, ONLY:                                                    &
 
 USE jules_water_resources_mod, ONLY: sw_river_source
 
+USE route_reservoirs_mod, ONLY:                                                &
+! imported procedures
+     route_reservoirs
+
 USE timestep_mod, ONLY: timestep
 
 USE water_constants_mod, ONLY: rho_water
@@ -127,8 +131,10 @@ REAL(KIND=real_jlslsm) ::                                                      &
        !  initial river flow [m3/s]
    ,dt                                                                         &
        !  river routing model timestep (s)
-   ,dx
+   ,dx                                                                         &
        !  distance between midpoints of neighbouring cells (m)
+   ,reservoir_flow
+       !  flow in and out of reservoir (kg s-1)
 
 REAL(KIND=real_jlslsm) ::                                                      &
    substore_n(np_rivers)                                                       &
@@ -238,6 +244,23 @@ DO ip = 1,np_rivers
 
   rn = rivers%rivers_next_rp(ip)
   landtype = rivers%rfm_land_rp(ip)
+
+  !-------------------------------------------------------------------------------
+  !   If reservoirs are considered and capacity > 0, route through reservoirs.
+  !-------------------------------------------------------------------------------
+  IF (l_reservoirs .AND. rivers%res_cap_current(ip) > 0.0) THEN
+    reservoir_flow = rivers%rfm_flowin_rp(ip) * 1000.0 / dt
+    CALL route_reservoirs(dt, abstracted_res_rp(ip),                           &
+                                rivers%res_cap_current(ip),                    &
+                                rivers%res_catch(ip),                          &
+                                rivers%res_critical(ip),                       &
+                                rivers%res_flood(ip),                          &
+                                rivers%res_emergency(ip),                      &
+                                rivers%res_normal_release(ip),                 &
+                                rivers%res_flood_release(ip),                  &
+                                rivers%res_storage(ip), reservoir_flow)
+    rivers%rfm_flowin_rp(ip) = reservoir_flow * dt / 1000.0
+  ENDIF
 
   IF (landtype == rfm_land) THEN  !Gridcell is land
 
