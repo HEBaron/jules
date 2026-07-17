@@ -454,15 +454,6 @@ TYPE :: rivers_data_type
   REAL, ALLOCATABLE :: tot_sub_runoff_gb(:)
                            !  accumulated sub-surface runoff (production)
                            !  rate between calls to rivers (kg m-2 s-1)
-  REAL, ALLOCATABLE :: tot_abstracted_minor_res(:)
-                           !  Water abstracted from minor reservoirs over river
-                           !  timestep (kg).
-  REAL, ALLOCATABLE :: tot_abstracted_res(:)
-                           !  Water abstracted from reservoirs over river
-                           !  timestep (kg).
-  REAL, ALLOCATABLE :: tot_net_abstracted_river(:)
-                           ! Water abstracted from rivers over river timestep
-                           ! (kg m-2).
   REAL, ALLOCATABLE :: acc_lake_evap_gb(:,:)
                            !  accumulated lake evap over river routing
                            !  timestep (Kg/m2) - on 2D full global field
@@ -526,10 +517,6 @@ TYPE :: rivers_data_type
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rrun_sub_surf_rp(:)
                             ! Sub-surface runoff after river routing on river
                             ! vector (kg/m2/s)
-!  REAL(KIND=real_jlslsm), ALLOCATABLE :: minor_res_abstracted_rp(:)
-                            ! Water abstracted from minor reservoirs, on river
-                            ! points (kg).
-                            ! cxyz only needs to be here for diagnostic, otherwise could be local to routing.
   REAL(KIND=real_jlslsm), ALLOCATABLE :: sub_surf_roff_rp(:)
     ! OASIS-Rivers: Sub-surface runoff on river vector (kg m-2 s-1)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: surf_roff_rp(:)
@@ -633,6 +620,18 @@ TYPE :: rivers_data_type
     ! Water stored in reservoirs (kg).
   REAL(KIND=real_jlslsm), ALLOCATABLE :: res_cap_current(:)
     ! Capacity of currently active reservoirs (kg).
+    
+  ! Variables for coupling with water resources.
+  !----------------------------------------------------------------------------
+  REAL, ALLOCATABLE :: tot_abstracted_minor_res_global(:)
+                           !  Water abstracted from minor reservoirs over river
+                           !  timestep, on global land points (kg).
+  REAL, ALLOCATABLE :: tot_abstracted_res_global(:)
+                           !  Water abstracted from reservoirs over river
+                           !  timestep, on global land points (kg).
+  REAL, ALLOCATABLE :: tot_net_abstracted_river_global(:)
+                           ! Water abstracted from rivers over river timestep,
+                           ! on global land points(kg m-2).
 
   ! Ancillary arrays defined on full 2D rivers grid.
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rivers_seq(:,:)
@@ -685,9 +684,6 @@ END TYPE rivers_data_type
 TYPE :: rivers_type
   REAL, POINTER :: tot_surf_runoff_gb(:)
   REAL, POINTER :: tot_sub_runoff_gb(:)
-  REAL, POINTER :: tot_abstracted_minor_res(:)
-  REAL, POINTER :: tot_abstracted_res(:)
-  REAL, POINTER :: tot_net_abstracted_river(:)
   REAL, POINTER :: acc_lake_evap_gb(:,:)
   REAL, POINTER :: rivers_sto_per_m2_on_landpts(:)
   REAL, POINTER :: rivers_adj_on_landpts(:)
@@ -743,6 +739,9 @@ TYPE :: rivers_type
   REAL(KIND=real_jlslsm), POINTER :: res_emergency(:)
   REAL(KIND=real_jlslsm), POINTER :: res_normal_release(:)
   REAL(KIND=real_jlslsm), POINTER :: res_flood_release(:)
+  REAL(KIND=real_jlslsm), POINTER :: tot_abstracted_minor_res_global(:)
+  REAL(KIND=real_jlslsm), POINTER :: tot_abstracted_res_global(:)
+  REAL(KIND=real_jlslsm), POINTER :: tot_net_abstracted_river_global(:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_seq(:,:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_dir(:,:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_dra(:,:)
@@ -778,9 +777,9 @@ IMPLICIT NONE
 
 !Arguments
 INTEGER, INTENT(IN) :: land_pts, t_i_length, t_j_length
-INTEGER, INTENT(in) :: sw_river_source
+INTEGER, INTENT(IN) :: sw_river_source
   ! Index of river water in surface water source arrays.
-LOGICAL, INTENT(in) :: l_water_resources
+LOGICAL, INTENT(IN) :: l_water_resources
     ! Switch to select water resource management modelling.
 TYPE(rivers_data_type), INTENT(IN OUT) :: rivers_data
 
@@ -800,21 +799,6 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 #if !defined(LFRIC)
 ALLOCATE(rivers_data%tot_surf_runoff_gb(land_pts))
 ALLOCATE(rivers_data%tot_sub_runoff_gb(land_pts))
-IF ( l_water_resources .AND. l_minor_reservoirs ) THEN
-  ALLOCATE(rivers_data%tot_abstracted_minor_res(land_pts))
-ELSE
-  ALLOCATE(rivers_data%tot_abstracted_minor_res(1))
-END IF
-IF ( l_water_resources .AND. l_reservoirs ) THEN
-  ALLOCATE(rivers_data%tot_abstracted_res(land_pts))
-ELSE
-  ALLOCATE(rivers_data%tot_abstracted_res(1))
-END IF
-IF ( l_water_resources .AND. sw_river_source > 0 ) THEN
-  ALLOCATE(rivers_data%tot_net_abstracted_river(land_pts))
-ELSE
-  ALLOCATE(rivers_data%tot_net_abstracted_river(1))
-END IF
 ALLOCATE(rivers_data%acc_lake_evap_gb(t_i_length,t_j_length))
 ALLOCATE(rivers_data%rivers_sto_per_m2_on_landpts(land_pts))
 ALLOCATE(rivers_data%rivers_adj_on_landpts(land_pts))
@@ -861,9 +845,6 @@ ALLOCATE(rivers_data%rivers_outflow_rp(np_rivers))
 #else
 ALLOCATE(rivers_data%tot_surf_runoff_gb(1))
 ALLOCATE(rivers_data%tot_sub_runoff_gb(1))
-ALLOCATE(rivers_data%tot_abstracted_minor_res(1))
-ALLOCATE(rivers_data%tot_abstracted_res(1))
-ALLOCATE(rivers_data%tot_net_abstracted_river(1))
 ALLOCATE(rivers_data%acc_lake_evap_gb(1,1))
 ALLOCATE(rivers_data%rivers_sto_per_m2_on_landpts(1))
 ALLOCATE(rivers_data%rivers_adj_on_landpts(1))
@@ -894,9 +875,6 @@ rivers_data%global_land_index(:) = imdi
 
 rivers_data%tot_surf_runoff_gb(:) = 0.0
 rivers_data%tot_sub_runoff_gb(:)  = 0.0
-rivers_data%tot_abstracted_minor_res(:) = 0.0
-rivers_data%tot_abstracted_res(:) = 0.0
-rivers_data%tot_net_abstracted_river(:) = 0.0
 rivers_data%acc_lake_evap_gb(:,:)   = 0.0
 rivers_data%rivers_sto_per_m2_on_landpts(:) = 0.0
 rivers_data%rivers_adj_on_landpts(:) = 0.0
@@ -1579,9 +1557,6 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
 DEALLOCATE(rivers_data%tot_surf_runoff_gb)
 DEALLOCATE(rivers_data%tot_sub_runoff_gb)
-DEALLOCATE(rivers_data%tot_abstracted_minor_res)
-DEALLOCATE(rivers_data%tot_abstracted_res)
-DEALLOCATE(rivers_data%tot_net_abstracted_river)
 DEALLOCATE(rivers_data%acc_lake_evap_gb)
 DEALLOCATE(rivers_data%rivers_sto_per_m2_on_landpts)
 DEALLOCATE(rivers_data%rivers_adj_on_landpts)
@@ -1655,9 +1630,6 @@ CALL rivers_nullify(rivers)
 
 rivers%tot_surf_runoff_gb => rivers_data%tot_surf_runoff_gb
 rivers%tot_sub_runoff_gb => rivers_data%tot_sub_runoff_gb
-rivers%tot_abstracted_minor_res => rivers_data%tot_abstracted_minor_res
-rivers%tot_abstracted_res => rivers_data%tot_abstracted_res
-rivers%tot_net_abstracted_river => rivers_data%tot_net_abstracted_river
 rivers%acc_lake_evap_gb => rivers_data%acc_lake_evap_gb
 rivers%rivers_sto_per_m2_on_landpts => rivers_data%rivers_sto_per_m2_on_landpts
 rivers%rivers_adj_on_landpts => rivers_data%rivers_adj_on_landpts
@@ -1729,9 +1701,6 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
 NULLIFY(rivers%tot_surf_runoff_gb)
 NULLIFY(rivers%tot_sub_runoff_gb)
-NULLIFY(rivers%tot_abstracted_minor_res)
-NULLIFY(rivers%tot_abstracted_res)
-NULLIFY(rivers%tot_net_abstracted_river)
 NULLIFY(rivers%acc_lake_evap_gb)
 NULLIFY(rivers%rivers_sto_per_m2_on_landpts)
 NULLIFY(rivers%rivers_adj_on_landpts)

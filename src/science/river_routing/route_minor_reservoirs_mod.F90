@@ -1,4 +1,13 @@
-!cxyz add header
+!******************************COPYRIGHT**************************************
+! (c) UK Centre for Ecology & Hydrology.
+! All rights reserved.
+!
+! This routine has been licensed to the other JULES partners for use and
+! distribution under the JULES collaboration agreement, subject to the terms
+! and conditions set out therein.
+!
+! [Met Office Ref SC0237]
+!******************************COPYRIGHT**************************************
 
 MODULE  route_minor_reservoirs_mod
 
@@ -82,8 +91,6 @@ DO i = 1, np_rivers
   END IF
 
 END DO
-
-!print*,'bottom RES_ROUTE range storage=',minval(minor_res_storage),maxval(minor_res_storage)
 
 RETURN
 END SUBROUTINE route_minor_reservoirs

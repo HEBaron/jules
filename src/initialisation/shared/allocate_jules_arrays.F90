@@ -61,6 +61,11 @@ USE jules_water_tracers_mod,  ONLY: l_wtrac_jls
 USE jules_surface_types_mod,  ONLY: ncpft,nnpft
 USE jules_snow_mod,           ONLY: nsmax, cansnowtile
 USE jules_surface_types_mod,  ONLY: npft, nnvg, ntype
+#if defined(UM_JULES)
+USE atm_land_sea_mask, ONLY: global_land_pts => atmos_number_of_landpts
+#else
+USE model_grid_mod, ONLY: global_land_pts
+#endif
 USE theta_field_sizes,        ONLY: t_i_length, t_j_length,                    &
                                     u_i_length,u_j_length,                     &
                                     v_i_length,v_j_length
@@ -142,6 +147,8 @@ USE UM_ParVars,      ONLY: lasize
 USE UM_ParParams,    ONLY: halo_type_no_halo
 USE Field_Types,     ONLY: fld_type_r
 #endif
+
+USE parallel_mod, ONLY: is_master_task
 
 USE parkind1,                 ONLY: jprb, jpim
 USE yomhook,                  ONLY: lhook, dr_hook
@@ -292,13 +299,14 @@ CALL coastal_alloc(land_pts,t_i_length,t_j_length,                             &
 
 CALL deposition_species_alloc(ntype, ndry_dep_species, l_deposition)
 
-CALL water_resources_alloc( land_pts, n_sw_source, nwater_use, sw_river_source,&
-                            l_have_groundwater, l_have_surface_water,          &
+CALL water_resources_alloc( global_land_pts, land_pts, n_sw_source,            &
+                            nwater_use, sw_river_source, l_have_groundwater,   &
+                            l_have_surface_water, is_master_task(),            &
                             l_minor_reservoirs, l_reservoirs,                  &
                             l_water_domestic, l_water_industry,                &
-                            l_water_irrigation, l_water_livestock,             &
-                            l_water_resources, l_water_transfers,              &
-                            water_resources_data )
+                            l_water_irrigation,                                &
+                            l_water_livestock, l_water_resources,              &
+                            l_water_transfers, water_resources_data )
 
 ! Set up local river grid sizes  (Note, water tracers only work in UM_JULES)
 #if defined(UM_JULES)

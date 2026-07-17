@@ -670,10 +670,16 @@ SUBROUTINE allocate_rivers_vars_rp( np_rivers, rivers, rivers_data )
 !------------------------------------------------------------------------------
 ! Description:
 !   Allocate river point variables, initialise, and associate pointers.
-!   Also allocates at least one variable on land points.
+!   Also allocates related variables on land points.
 !------------------------------------------------------------------------------
 
 USE ancil_info, ONLY: land_pts
+
+#if defined(UM_JULES)
+USE atm_land_sea_mask, ONLY: global_land_pts => atmos_number_of_landpts
+#else
+USE model_grid_mod, ONLY: global_land_pts
+#endif
 
 USE jules_model_environment_mod, ONLY: l_oasis_rivers
 
@@ -681,6 +687,8 @@ USE jules_rivers_mod, ONLY: i_river_vn, l_minor_reservoirs, l_reservoirs,      &
                             l_sea_level, l_vary_sea_level, rivers_camaflood,   &
                             rivers_data_type, rivers_rfm,                      &
                             rivers_trip, rivers_type, l_outflow_per_river
+
+USE jules_water_resources_mod, ONLY: l_water_resources
 
 USE missing_data_mod, ONLY: imdi, rmdi
 
@@ -709,6 +717,8 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ALLOCATE_RIVERS_VARS_RP'
 INTEGER ::                                                                     &
   ERROR, error_sum,                                                            &
     ! Error flags.
+  np_global_land_tmp,                                                          &
+    ! Number of global land points (across all tasks) to allocate for.
   np_land_tmp,                                                                 &
     ! Number of land points to allocate for.
   np_rivers_tmp
@@ -944,10 +954,12 @@ error_sum = error_sum + ERROR
 !------------------------------------------------------------------------------
 IF ( l_minor_reservoirs .AND. is_master_task() ) THEN
   ! Full size.
-  np_rivers_tmp = np_rivers
+  np_rivers_tmp      = np_rivers
+  np_global_land_tmp = global_land_pts
 ELSE
   ! Minimum size.
-  np_rivers_tmp = 1
+  np_rivers_tmp      = 1
+  np_global_land_tmp = 1
 END IF
 
 ! Minor reservoir ancillaries.
@@ -958,16 +970,22 @@ error_sum = error_sum + ERROR
 ! Minor reservoir prognostics.
 ALLOCATE( rivers_data%minor_res_storage(np_rivers_tmp),       STAT = ERROR )
 error_sum = error_sum + ERROR
+! Minor reservoir coupling to rivers.
+ALLOCATE( rivers_data%tot_abstracted_minor_res_global(np_global_land_tmp),     &
+                                                              STAT = ERROR )
+error_sum = error_sum + ERROR
 
 !------------------------------------------------------------------------------
 ! Allocate reservoir variables.
 !------------------------------------------------------------------------------
 IF ( l_reservoirs .AND. is_master_task() ) THEN
   ! Full size.
-  np_rivers_tmp = np_rivers
+  np_rivers_tmp      = np_rivers
+  np_global_land_tmp = global_land_pts
 ELSE
   ! Minimum size.
-  np_rivers_tmp = 1
+  np_rivers_tmp      = 1
+  np_global_land_tmp = 1
 END IF
 
 ! Reservoir ancillaries.
@@ -991,6 +1009,26 @@ error_sum = error_sum + ERROR
 ALLOCATE( rivers_data%res_storage(np_rivers_tmp),       STAT = ERROR )
 error_sum = error_sum + ERROR
 ALLOCATE( rivers_data%res_cap_current(np_rivers_tmp),   STAT = ERROR )
+error_sum = error_sum + ERROR
+! Reservoir coupling to rivers.
+ALLOCATE( rivers_data%tot_abstracted_res_global(np_global_land_tmp),           &
+                                                              STAT = ERROR )
+error_sum = error_sum + ERROR
+
+!------------------------------------------------------------------------------
+! Allocate further variables for coupling to water resources.
+!------------------------------------------------------------------------------
+IF ( l_water_resources .AND. is_master_task() ) THEN
+  ! Full size.
+  np_global_land_tmp = global_land_pts
+ELSE
+  ! Minimum size.
+  np_global_land_tmp = 1
+END IF
+
+! Coupling abstractions from rivers.
+ALLOCATE( rivers_data%tot_net_abstracted_river_global(np_global_land_tmp),     &
+                                                              STAT = ERROR )
 error_sum = error_sum + ERROR
 
 IF ( error_sum /= 0 ) THEN
@@ -1021,7 +1059,6 @@ rivers_data%map_river_to_land_points(:) = imdi
 
 ! Initialise CaMa-Flood array values
 ! CaMa-Flood ancillary variables.
-!cxyz Note not zero despite message in required_vars_for_rivers (out of scope!).
 rivers_data%channel_depth(:)    = rmdi
 rivers_data%channel_width(:)    = rmdi
 rivers_data%river_distance(:)   = rmdi
@@ -1086,6 +1123,11 @@ rivers_data%res_flood_release(:) = rmdi
 rivers_data%res_storage(:)       = 0.0
 rivers_data%res_cap_current(:)   = 0.0
 
+! Initialise further variables to couple to water resources.
+rivers_data%tot_abstracted_minor_res_global(:) = rmdi
+rivers_data%tot_abstracted_res_global(:)       = rmdi
+rivers_data%tot_net_abstracted_river_global(:) = rmdi
+
 !------------------------------------------------------------------------------
 ! Associate pointers
 !------------------------------------------------------------------------------
@@ -1106,10 +1148,10 @@ rivers%rrun_rp => rivers_data%rrun_rp
 rivers%rrun_sub_surf_rp => rivers_data%rrun_sub_surf_rp
 rivers%rrun_surf_rp => rivers_data%rrun_surf_rp
 
-! Associate pointers for regridding variable.
+! Regridding variable.
 rivers%map_river_to_land_points => rivers_data%map_river_to_land_points
 
-! Associate pointers for CaMa-Flood variables.
+! CaMa-Flood variables.
 ! CaMa-Flood ancillary variables.
 rivers%channel_depth      => rivers_data%channel_depth
 rivers%channel_width      => rivers_data%channel_width
@@ -1132,7 +1174,7 @@ rivers%river_flow_prev    => rivers_data%river_flow_prev
 ! CaMa-Flood diagnostic variables.
 rivers%river_depth        => rivers_data%river_depth
 
-! Associate pointers for RFM variables.
+! RFM variables.
 rivers%rfm_flowobs1_rp => rivers_data%rfm_flowobs1_rp
 rivers%rfm_iarea_rp => rivers_data%rfm_iarea_rp
 rivers%rfm_land_rp => rivers_data%rfm_land_rp
@@ -1143,19 +1185,25 @@ rivers%rfm_rivflow_rp => rivers_data%rfm_rivflow_rp
 rivers%rfm_substore_rp => rivers_data%rfm_substore_rp
 rivers%rfm_surfstore_rp => rivers_data%rfm_surfstore_rp
 
-! Associate pointers for TRIP variables.
+! TRIP variables.
 rivers%rivers_seq_rp => rivers_data%rivers_seq_rp
 rivers%rivers_sto_rp => rivers_data%rivers_sto_rp
 
-! Associate pointers for coupling variables.
+! Coupling variables.
 rivers%rivers_outflow_number_rp => rivers_data%rivers_outflow_number_rp
 rivers%sub_surf_roff_rp => rivers_data%sub_surf_roff_rp
 rivers%surf_roff_rp => rivers_data%surf_roff_rp
 
-! Associate pointers for minor reservoir variables.
+! Minor reservoir variables.
 rivers%minor_res_capacity      => rivers_data%minor_res_capacity
 rivers%minor_res_frac          => rivers_data%minor_res_frac
 rivers%minor_res_storage       => rivers_data%minor_res_storage
+rivers%tot_abstracted_minor_res_global                                         &
+                               => rivers_data%tot_abstracted_minor_res_global
+
+! Further variables to couple to water resources.
+rivers%tot_net_abstracted_river_global                                         &
+                               => rivers_data%tot_net_abstracted_river_global
 
 ! Associate pointers for reservoir variables.
 rivers%res_capacity      => rivers_data%res_capacity
@@ -1168,6 +1216,8 @@ rivers%res_normal_release => rivers_data%res_normal_release
 rivers%res_flood_release  => rivers_data%res_flood_release
 rivers%res_storage       => rivers_data%res_storage
 rivers%res_cap_current   => rivers_data%res_cap_current
+rivers%tot_abstracted_res_global                                               &
+                               => rivers_data%tot_abstracted_res_global
 
 RETURN
 END SUBROUTINE allocate_rivers_vars_rp
@@ -1179,7 +1229,6 @@ SUBROUTINE deallocate_river_props( )
 !------------------------------------------------------------------------------
 ! Description:
 !   Deallocate river variables that are not needed any further.
-!cxyz Ideally in reverse order...
 !------------------------------------------------------------------------------
 
 USE jules_rivers_mod, ONLY:                                                    &
