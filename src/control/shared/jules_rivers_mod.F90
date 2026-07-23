@@ -146,7 +146,12 @@ LOGICAL ::                                                                     &
                  !   so outflow_per_river should be present in jules_output.
                  ! Both cases are checked once the latter namelist is read.
                  ! Additionally, rivers_outflow_rp is added to the dump.
-
+   ,l_inland_outflow = .FALSE.                                                 &
+                 ! Internal flag which is set to TRUE when at least one of the
+                 ! following is true:
+                 ! - OASIS send field contains 'inland_outflow'
+                 ! - The diagnostic 'inland_outflow_rp' has been requested
+                 ! - UM-TRIP when l_inland = T
    ,l_init_storage = .FALSE.
                  ! Set to true if an initial river storage ancillary file is
                  ! used
@@ -490,6 +495,8 @@ TYPE :: rivers_data_type
                             ! Maps ocean outflow gridboxes to the river they
                             !    belong to (on river points)
                             ! Used for coupling to ocean model
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: land_fraction_rp(:)
+                            ! Land fraction on river points
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rivers_sto_rp(:)
                             ! Water storage (kg)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rivers_lat_rp(:)
@@ -655,12 +662,15 @@ TYPE :: rivers_data_type
                             ! from an ancillary on the 2d Rivers grid.
                             ! The ancillary can either be for a single time or
                             ! a 12-month climatology
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: land_fraction_2d(:,:)
+                            ! Land fraction on global 2D grid
+
+  ! Arrays defined on 1d river points vectors
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rivers_xgrid(:)
                             ! Coordinate values for x-dimension of rivers grid
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rivers_ygrid(:)
                             ! Coordinate values for y-dimension of rivers grid
 
-  ! Arrays defined on 1d river points vectors
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rfm_flowobs1_rp(:)
                             ! Initial (observed) river flow (kg m-2 s-1)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rfm_surfstore_rp(:)
@@ -679,6 +689,8 @@ TYPE :: rivers_data_type
                             ! Gridbox area of each river grid pixel (m2)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: rivers_outflow_rp(:)
                             ! River outflow into the ocean (kg s-1)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: inland_outflow_rp(:)
+                            ! Inland basin flow into soil moisture (kg m-2 s-1)
 END TYPE rivers_data_type
 
 TYPE :: rivers_type
@@ -695,6 +707,8 @@ TYPE :: rivers_type
   INTEGER, POINTER :: rivers_next_rp(:)
   INTEGER, POINTER :: rivers_seq_rp(:)
   INTEGER, POINTER :: rivers_outflow_number_rp(:)
+  REAL(KIND=real_jlslsm), POINTER :: land_fraction_2d(:,:)
+  REAL(KIND=real_jlslsm), POINTER :: land_fraction_rp(:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_sto_rp(:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_lat_rp(:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_lon_rp(:)
@@ -760,6 +774,7 @@ TYPE :: rivers_type
   REAL(KIND=real_jlslsm), POINTER :: rfm_baseflow_rp(:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_boxareas_rp(:)
   REAL(KIND=real_jlslsm), POINTER :: rivers_outflow_rp(:)
+  REAL(KIND=real_jlslsm), POINTER :: inland_outflow_rp(:)
 END TYPE rivers_type
 
 CONTAINS

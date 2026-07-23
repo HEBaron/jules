@@ -519,6 +519,8 @@ ALLOCATE( river_length_grid(nx_size, ny_size), STAT = ERROR )
 error_sum = error_sum + ERROR
 ALLOCATE( river_manning_grid(nx_size, ny_size), STAT = ERROR )
 error_sum = error_sum + ERROR
+ALLOCATE( rivers_data%land_fraction_2d(nx_rivers, ny_rivers), STAT = ERROR )
+error_sum = error_sum + ERROR
 
 ! CaMa-Flood variables that depend on a further switch.
 IF ( i_river_vn == rivers_camaflood .AND. l_sea_level ) THEN
@@ -639,8 +641,9 @@ rivers_data%rivers_dra(:,:)            = rmdi
 rivers_data%rivers_seq(:,:)            = rmdi
 rivers_data%rivers_outflow_number(:,:) = rmdi
 rivers_data%rivers_storage(:,:)        = rmdi
-minor_res_capacity_grid(:,:)        = rmdi
-minor_res_frac_grid(:,:)            = rmdi
+rivers_data%land_fraction_2d(:,:)      = rmdi
+minor_res_capacity_grid(:,:)  = rmdi
+minor_res_frac_grid(:,:)      = rmdi
 res_capacity_grid(:,:)        = rmdi
 res_catch_grid(:,:)           = rmdi
 res_year_grid(:,:)            = rmdi
@@ -659,6 +662,7 @@ rivers%rivers_dra        => rivers_data%rivers_dra
 rivers%rivers_seq        => rivers_data%rivers_seq
 rivers%rivers_outflow_number => rivers_data%rivers_outflow_number
 rivers%rivers_storage    => rivers_data%rivers_storage
+rivers%land_fraction_2d  => rivers_data%land_fraction_2d
 
 RETURN
 END SUBROUTINE allocate_river_vars_grid
@@ -758,11 +762,15 @@ ALLOCATE(rivers_data%rivers_x_coord_rp(np_rivers_tmp),   STAT = ERROR)
 error_sum = error_sum + ERROR
 ALLOCATE(rivers_data%rivers_y_coord_rp(np_rivers_tmp),   STAT = ERROR)
 error_sum = error_sum + ERROR
+ALLOCATE(rivers_data%land_fraction_rp(np_rivers),        STAT = ERROR)
+error_sum = error_sum + ERROR
 
 ! Fluxes.
 ALLOCATE(rivers_data%rflow_rp(np_rivers_tmp),            STAT = ERROR)
 error_sum = error_sum + ERROR
 ALLOCATE(rivers_data%rivers_outflow_rp(np_rivers),       STAT = ERROR)
+error_sum = error_sum + ERROR
+ALLOCATE(rivers_data%inland_outflow_rp(np_rivers),       STAT = ERROR)
 error_sum = error_sum + ERROR
 ALLOCATE(rivers_data%rrun_rp(np_rivers_tmp),             STAT = ERROR)
 error_sum = error_sum + ERROR
@@ -1047,12 +1055,14 @@ rivers_data%rivers_lon_rp(:)     = rmdi
 rivers_data%rivers_next_rp(:)    = imdi
 rivers_data%rivers_x_coord_rp(:) = rmdi
 rivers_data%rivers_y_coord_rp(:) = rmdi
+rivers_data%land_fraction_rp(:)  = 1.0
 ! Fluxes.
 rivers_data%rflow_rp(:)          = 0.0
 rivers_data%rivers_outflow_rp(:) = rmdi
 rivers_data%rrun_rp(:)           = 0.0
 rivers_data%rrun_sub_surf_rp(:)  = 0.0
 rivers_data%rrun_surf_rp(:)      = 0.0
+rivers_data%inland_outflow_rp(:) = rmdi
 
 ! Initialise regridding variable.
 rivers_data%map_river_to_land_points(:) = imdi
@@ -1141,12 +1151,14 @@ rivers%rivers_ilon_rp => rivers_data%rivers_ilon_rp
 rivers%rivers_next_rp => rivers_data%rivers_next_rp
 rivers%rivers_x_coord_rp => rivers_data%rivers_x_coord_rp
 rivers%rivers_y_coord_rp => rivers_data%rivers_y_coord_rp
+rivers%land_fraction_rp => rivers_data%land_fraction_rp
 ! Fluxes.
 rivers%rflow_rp => rivers_data%rflow_rp
 rivers%rivers_outflow_rp => rivers_data%rivers_outflow_rp
 rivers%rrun_rp => rivers_data%rrun_rp
 rivers%rrun_sub_surf_rp => rivers_data%rrun_sub_surf_rp
 rivers%rrun_surf_rp => rivers_data%rrun_surf_rp
+rivers%inland_outflow_rp => rivers_data%inland_outflow_rp
 
 ! Regridding variable.
 rivers%map_river_to_land_points => rivers_data%map_river_to_land_points

@@ -187,6 +187,7 @@ CASE ( rivers_trip )
                           rivers%rivers_next_rp, rivers%rivers_seq_rp,         &
                           rivers%rivers_sto_rp, rivers%rivers_boxareas_rp,     &
                           rivers%rivers_lat_rp, rivers%rivers_lon_rp,          &
+                          rivers%inland_outflow_rp, rivers%land_fraction_rp,   &
                           abstracted_res_rp,                                   &
                           rivers%res_cap_current,                              &
                           rivers%res_catch,                                    &
@@ -195,6 +196,7 @@ CASE ( rivers_trip )
                           rivers%res_normal_release,                           &
                           rivers%res_flood_release,                            &
                           rivers%res_storage )
+                          
 CASE DEFAULT
   WRITE(jules_message,*) 'ERROR: rivers_drive: ' //                            &
                          'do not recognise i_river_vn=', i_river_vn

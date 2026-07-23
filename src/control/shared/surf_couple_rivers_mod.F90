@@ -64,7 +64,8 @@ USE jules_rivers_mod,         ONLY: i_river_vn, nstep_rivers,                  &
                                     l_riv_overbank,                            &
                                     l_vary_sea_level,                          &
                                     ! UM only
-                                    l_inland, rivers_um_trip, rivers_first
+                                    l_inland_outflow, rivers_um_trip,          &
+                                    rivers_first
 USE jules_model_environment_mod, ONLY:  l_oasis_rivers
 USE timestep_mod,             ONLY: timestep
 
@@ -314,7 +315,7 @@ END IF
 #if defined(UM_JULES)
 
 !Pass inland flow to soil moisture every timestep
-IF ( .NOT. l_inland) THEN
+IF ( .NOT. l_inland_outflow) THEN
   DO j = 1, rows
     DO i = 1, row_length
       inlandout_atmos(i,j) = 0.0
@@ -830,7 +831,7 @@ IF ( rivers_call ) THEN
 
 #if defined(UM_JULES)
   !compress inland basin outputs to land points only
-  IF (l_inland) THEN
+  IF (l_inland_outflow) THEN
     DO l = 1,land_pts
       j = (land_index(l) - 1) / row_length +1
       i = land_index(l) - (j-1) * row_length
