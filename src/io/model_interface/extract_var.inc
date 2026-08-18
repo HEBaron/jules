@@ -2739,6 +2739,33 @@ CASE ( 'minor_res_frac' )
 CASE ( 'minor_res_storage' )
   cube = cube_from_array(rivers%minor_res_storage)
 
+CASE ( 'res_capacity' )
+  cube = cube_from_array(rivers%res_capacity)
+
+CASE ( 'res_catch' )
+  cube = cube_from_array(rivers%res_catch)
+
+CASE ( 'res_year' )
+  cube = cube_from_array(rivers%res_year)
+
+CASE ( 'res_critical' )
+  cube = cube_from_array(rivers%res_critical)
+
+CASE ( 'res_flood' )
+  cube = cube_from_array(rivers%res_flood)
+
+CASE ( 'res_emergency' )
+  cube = cube_from_array(rivers%res_emergency)
+
+CASE ( 'res_normal_release' )
+  cube = cube_from_array(rivers%res_normal_release)
+
+CASE ( 'res_flood_release' )
+  cube = cube_from_array(rivers%res_flood_release)
+
+CASE ( 'res_storage' )
+  cube = cube_from_array(rivers%res_storage)
+
 CASE ( 'lake_depth' )
   cube_land = cube_from_array(lake_vars%lake_depth_gb)
   cube = map_from_land(cube_land)
@@ -3437,6 +3464,11 @@ CASE ( 'gw_nr_abstracted' )
 CASE ( 'minor_res_abstracted' )
   ! Convert kg to kg s-1.
   cube_land = cube_from_array( water_resources%abstracted_minor_res / timestep )
+  cube = map_from_land(cube_land)
+
+CASE ( 'res_abstracted' )
+  ! Convert kg to kg s-1.
+  cube_land = cube_from_array( water_resources%abstracted_res / timestep )
   cube = map_from_land(cube_land)
 
 CASE ( 'river_abstracted' )

@@ -47,7 +47,7 @@ USE init_rivers_process_data_mod, ONLY: process_rivers_data
 USE io_constants, ONLY: max_file_name_len, namelist_unit
 
 USE jules_rivers_mod, ONLY:                                                    &
-  i_river_vn, l_rivers, l_minor_reservoirs, l_sea_level,                       &
+  i_river_vn, l_rivers, l_minor_reservoirs, l_reservoirs, l_sea_level,         &
   rivers_camaflood, rivers_rfm,                                                &
   rivers_trip, y1_land_grid, l_riv_overbank, l_outflow_per_river,              &
   l_init_storage,                                                              &
@@ -310,6 +310,28 @@ IF ( is_master_task() ) THEN
     required_vars(nvars_required) = 'minor_res_capacity_grid'
     nvars_required = nvars_required + 1
     required_vars(nvars_required) = 'minor_res_frac_grid'
+  END IF
+
+  !----------------------------------------------------------------------------
+  ! Add variables for reservoirs.
+  !----------------------------------------------------------------------------
+  IF ( l_reservoirs ) THEN
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_capacity_grid'
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_catch_grid'
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_year_grid'
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_critical_grid'
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_flood_grid'
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_emergency_grid'
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_normal_release_grid'
+    nvars_required = nvars_required + 1
+    required_vars(nvars_required) = 'res_flood_release_grid'
   END IF
 
   ! OASIS-Rivers:

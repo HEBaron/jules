@@ -163,6 +163,7 @@ END SUBROUTINE calc_avail_groundwater
 !##############################################################################
 
 SUBROUTINE calc_avail_surface_water( minor_res_storage_global,                 &
+                                     res_storage_global,                       &
                                      river_storage_global,                     &
                                      sw_avail_global )
 
@@ -174,10 +175,10 @@ SUBROUTINE calc_avail_surface_water( minor_res_storage_global,                 &
 
 USE model_grid_mod, ONLY: global_land_pts
 
-USE jules_rivers_mod, ONLY: l_minor_reservoirs, l_rivers
+USE jules_rivers_mod, ONLY: l_minor_reservoirs, l_reservoirs, l_rivers
 
 USE jules_water_resources_mod, ONLY:  n_sw_source, sw_minor_res_source,        &
-                                      sw_river_source
+                                      sw_res_source, sw_river_source
 
 IMPLICIT NONE
 
@@ -187,6 +188,8 @@ IMPLICIT NONE
 REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
   minor_res_storage_global(global_land_pts),                                   &
     ! Water stored in minor reservoirs, on land points (kg).
+  res_storage_global(global_land_pts),                                         &
+    ! Water stored in reservoirs, on land points (kg).
   river_storage_global(global_land_pts)
     ! Water in rivers, on land points (kg).
 
@@ -224,6 +227,11 @@ IF ( l_rivers ) THEN
   IF ( l_minor_reservoirs ) THEN
     ! Include water stored in minor reservoirs.
     sw_avail_global(:,sw_minor_res_source) = minor_res_storage_global(:)
+  END IF
+
+  IF ( l_reservoirs ) THEN
+    ! Include water stored in reservoirs.
+    sw_avail_global(:,sw_res_source) = res_storage_global(:)
   END IF
 
 END IF

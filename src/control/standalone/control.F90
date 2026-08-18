@@ -11,8 +11,8 @@ SUBROUTINE control (                                                           &
     fluxes,                                                                    &
     lake_vars,                                                                 &
     forcing,                                                                   &
-    !veg3_parm, &
-    !veg3_field, &
+    !veg3_parm,                                                                &
+    !veg3_field,                                                               &
     chemvars,                                                                  &
     rivers, water_resources,                                                   &
     wtrac_jls,                                                                 &
@@ -271,7 +271,7 @@ REAL ::                                                                        &
     !Total resistance factor, fracaero_t+(1-fracaero_t)*RESFS for snow-free
     !land, 1 for snow.
   rhokh(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end),                  &
-    ! Grid-box surfac<e exchange coefficients
+    ! Grid-box surface exchange coefficients
   rhokh_surft(land_pts,nsurft),                                                &
     ! Surface exchange coefficients for land tiles
   rhokh_sice(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end,nice_use),    &
@@ -500,11 +500,11 @@ CALL surf_couple_radiation(                                                    &
   psparms, ainfo, urban_param, progs, coast, jules_vars,                       &
   fluxes,                                                                      &
   lake_vars,                                                                   &
-  !forcing, &
-  !rivers, &
-  !veg3_parm, &
-  !veg3_field, &
-  !chemvars, &
+  !forcing,                                                                    &
+  !rivers,                                                                     &
+  !veg3_parm,                                                                  &
+  !veg3_field,                                                                 &
+  !chemvars,                                                                   &
   progs_cbl                                                                    &
   )
 
@@ -628,9 +628,9 @@ CALL surf_couple_explicit(                                                     &
   fluxes,                                                                      &
   lake_vars,                                                                   &
   forcing,                                                                     &
-  !rivers,     &
-  !veg3_parm,  &
-  !veg3_field, &
+  !rivers,                                                                     &
+  !veg3_parm,                                                                  &
+  !veg3_field,                                                                 &
   chemvars,                                                                    &
   wtrac_jls,                                                                   &
   progs_cbl, work_cbl                                                          &
@@ -759,10 +759,10 @@ CALL surf_couple_implicit(                                                     &
   fluxes,                                                                      &
   lake_vars,                                                                   &
   forcing,                                                                     &
-  !rivers, &
-  !veg3_parm, &
-  !veg3_field, &
-  !chemvars, &
+  !rivers,                                                                     &
+  !veg3_parm,                                                                  &
+  !veg3_field,                                                                 &
+  !chemvars,                                                                   &
   wtrac_jls,                                                                   &
   progs_cbl, work_cbl                                                          &
   )
@@ -827,10 +827,10 @@ CALL surf_couple_implicit(                                                     &
   fluxes,                                                                      &
   lake_vars,                                                                   &
   forcing,                                                                     &
-  !rivers, &
-  !veg3_parm, &
-  !veg3_field, &
-  !chemvars, &
+  !rivers,                                                                     &
+  !veg3_parm,                                                                  &
+  !veg3_field,                                                                 &
+  !chemvars,                                                                   &
   wtrac_jls,                                                                   &
   progs_cbl, work_cbl                                                          &
   )
@@ -905,8 +905,8 @@ CALL surf_couple_extra(                                                        &
   lake_vars,                                                                   &
   forcing,                                                                     &
   rivers,                                                                      &
-  !veg3_parm, &
-  !veg3_field, &
+  !veg3_parm,                                                                  &
+  !veg3_field,                                                                 &
   chemvars, water_resources,                                                   &
   wtrac_jls,                                                                   &
   work_cbl                                                                     &

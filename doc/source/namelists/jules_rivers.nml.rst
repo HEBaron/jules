@@ -59,6 +59,20 @@ River routing introduces two more grids to a JULES run: the river routing input 
        No minor reservoirs are modelled.
 
 
+.. nml:member:: l_reservoirs
+
+   :type: logical
+   :default: F
+
+   Switch for enabling routing through reservoirs. Only used if :nml:mem:`JULES_RIVERS::l_rivers` is TRUE.
+
+   TRUE
+       River flow is routed through reservoirs prior to river routing.
+
+   FALSE
+       No reservoirs are modelled.
+
+
 .. nml:member:: l_riv_overbank
 
    :type: logical
