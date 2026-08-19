@@ -47,6 +47,9 @@ INTEGER, PARAMETER ::                                                          &
 INTEGER :: iyear_old, startyr, startmon, startday, starttime
       ! Variables to store required datetime information
 
+INTEGER :: icount(ndpy,nyav)
+      ! Timestep counter for calculation of daily means in calc_crop_date
+
 TYPE :: crop_vars_data_type
   !-----------------------------------------------------------------------------
   ! Variables

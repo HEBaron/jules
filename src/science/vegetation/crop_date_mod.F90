@@ -69,7 +69,9 @@ USE csigma, ONLY:                                                              &
 USE crop_vars_mod, ONLY:                                                       &
   ! imported scalars
   iyear_old, nday_crop, nyav, ndpy,                                            &
-  startyr, startmon, startday, starttime
+  startyr, startmon, startday, starttime,                                      &
+  ! imported arrays
+  icount
 
 USE jules_surface_types_mod, ONLY:                                             &
   ! imported scalars
@@ -166,7 +168,6 @@ LOGICAL :: datetime_ne
 !-----------------------------------------------------------------------------
 ! LOCAL array variables :
 !-----------------------------------------------------------------------------
-INTEGER :: icount(ndpy,nyav)
 REAL(KIND=real_jlslsm) :: rn(land_pts)
                                     ! Net downward radiation (W m-2).
 
@@ -185,7 +186,6 @@ secs_in_year = ndpy * isec_per_day
 !-----------------------------------------------------------------------------
 
 rn(:) = 0.0 ! first set RN to zero
-icount(:,:) = 0
 
 DO n = 1,nsurft ! loop over tiles
   DO l = 1,land_pts
